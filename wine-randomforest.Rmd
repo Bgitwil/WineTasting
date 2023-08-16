@@ -1,0 +1,79 @@
+---
+title: "Wine quality- decision tree/ random forest"
+author: "Brittani Wilson"
+date: "May 31, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r echo=FALSE}
+rm(list = ls())
+wine <- read.csv(url("https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"), header = TRUE, sep = ";")
+``` 
+
+```{r message=FALSE}
+require(caret)
+require(rpart)
+require(rpart.plot)
+require(randomForest)
+set.seed(1)
+
+
+str(wine)
+
+
+```
+
+First we change the predictor variable "quality"" to a factor. Before the data is split it is important to note that there are no nul values. The integer ratings in the data frame range for 3 to 8. In the histogram the ratings at level 3 and 4 represent ratings 5 and 6 in the data frame. Now we can split the data using the decision tree classification method, the wine is classified into six levels based on its properties. The samples are randomized so it is important to set the seed and then we split the data into 80% for training and 20% for testing respectively to create two randomized samples of the data.
+
+In this model "no" will always be to the right and "yes" will always be to the left with each branch representing a decision for splitting the data into a new classification. The decision tree split the data into only 3 of the 6 available classifications: 5, 6 and 7 as indicated by the "unused" 3,4,and 8 in the key. We can see the furthest branches show that the prediction made a good amount of errors, and when tested on unseen data the predictions were only 57% accurate, which isn't very good.
+
+```{r}
+table(wine$quality)
+names(wine)
+sum(is.na(wine))
+wine$quality <- as.factor(wine$quality)
+str(wine$quality)
+
+mixture <- as.numeric(wine$quality)
+hist(mixture)
+.8 * 1599
+s <- sample(1599, 1279)
+wine_train <- wine[s, ]
+wine_test <- wine[-s, ]
+dim(wine_train)
+dim(wine_test)
+tm <- rpart(quality~., wine_train, method = "class")
+rpart.plot(tm, tweak = .9)
+rpart.plot(tm, type = 4, extra = 101, tweak = .9)
+pred <- predict(tm, wine_test, type = "class")
+table(wine_test$quality, pred)
+confusionMatrix(table(pred, wine_test$quality))
+
+```
+ 
+To help improve the power of the model we reduce the levels of classification from 6 to 3. Wines ranked at 7 and 8 become "good",  5 and 6 became "normal", and then 3 and 4 become "bad". After splitting keeping 80% for testing we can now test the remaining data, which shows 88% accuracy and is a lot better than the decision tree.
+```{r}
+wine2 <- read.csv(url("https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"), header = TRUE, sep = ";")
+set.seed(1)
+barplot(table(wine2$quality))
+wine2$taste <- ifelse(wine2$quality < 5, "bad", "good")
+wine2$taste[wine2$quality == 5] <- "normal"
+wine2$taste[wine2$quality == 6] <- "normal"
+wine2$taste <- as.factor(wine2$taste)
+str(wine2$taste)
+barplot(table(wine2$taste))
+table(wine2$taste)
+samp <- sample(1599, 1279)
+wine_train2 <- wine2[samp, ]
+wine_test2 <- wine2[-samp, ]
+dim(wine_train2)
+dim(wine_test2)
+model <- randomForest(taste ~ . - quality, data = wine_train2)
+model
+prediction <- predict(model, newdata = wine_test2)
+table(prediction, wine_test2$taste)
+(0 + 25 + 255) / nrow(wine_test2)
+
+```
